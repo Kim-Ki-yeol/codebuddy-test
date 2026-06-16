@@ -1,0 +1,154 @@
+{
+  "openapi": "3.0.0",
+  "info": {
+    "title": "CodeBuddyTools",
+    "version": "1.0.0",
+    "description": "Tools for GitHub PR review, PR comments, and Slack notification"
+  },
+  "paths": {
+    "/pr": {
+      "get": {
+        "operationId": "get_github_pr",
+        "summary": "Get GitHub pull request information",
+        "description": "Get detailed information about a GitHub Pull Request. Use this tool when the user asks to fetch, inspect, analyze, or review a GitHub PR.",
+        "parameters": [
+          {
+            "name": "owner",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "GitHub repository owner. Example: Kim-Ki-yeol"
+          },
+          {
+            "name": "repo",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "GitHub repository name. Example: codebuddy-test"
+          },
+          {
+            "name": "pr_number",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "GitHub Pull Request number. Example: 3"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "PR information returned successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/pr/comment": {
+      "post": {
+        "operationId": "post_pr_comment",
+        "summary": "Post a comment to a GitHub pull request",
+        "description": "Post a comment to a GitHub Pull Request. Use this tool when the user asks to leave a review comment, write feedback, or post review results to a PR.",
+        "parameters": [
+          {
+            "name": "owner",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "GitHub repository owner. Example: Kim-Ki-yeol"
+          },
+          {
+            "name": "repo",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "GitHub repository name. Example: codebuddy-test"
+          },
+          {
+            "name": "pr_number",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "GitHub Pull Request number. Example: 3"
+          },
+          {
+            "name": "comment",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Comment text to post to the PR"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Comment posted successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/slack/send": {
+      "post": {
+        "operationId": "send_slack_message",
+        "summary": "Send Slack message",
+        "description": "Send a message to Slack. Use this tool when the user asks to notify Slack, send a Slack alert, post a message to a Slack channel, or report completion to Slack.",
+        "parameters": [
+          {
+            "name": "channel",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Slack channel name. Example: 새-채널"
+          },
+          {
+            "name": "message",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Message text to send to Slack"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Slack message sent successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,136 @@
+
+
+AWSTemplateFormatVersion: "2010-09-09"
+Description: CodeBuddy Agent deployment with real Lambda package
+
+Parameters:
+  ProjectName:
+    Type: String
+    Default: codebuddy-agent
+
+  AgentId:
+    Type: String
+    Description: AWS Bedrock Agent ID
+
+  AgentAliasId:
+    Type: String
+    Description: AWS Bedrock Agent Alias ID
+
+  GitHubToken:
+    Type: String
+    NoEcho: true
+    Description: GitHub Personal Access Token
+
+  SlackWebhookUrl:
+    Type: String
+    NoEcho: true
+    Description: Slack Incoming Webhook URL
+
+  LambdaCodeBucket:
+    Type: String
+    Description: S3 bucket containing Lambda deployment zip
+
+  LambdaCodeKey:
+    Type: String
+    Default: codebuddy-orchestrator.zip
+    Description: S3 key for Lambda deployment zip
+
+Resources:
+
+  CodeBuddyLambdaRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub "${ProjectName}-lambda-role"
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+                - lambda.amazonaws.com
+            Action:
+              - sts:AssumeRole
+
+      Policies:
+        - PolicyName: !Sub "${ProjectName}-lambda-policy"
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action:
+                  - logs:CreateLogGroup
+                  - logs:CreateLogStream
+                  - logs:PutLogEvents
+                Resource: "*"
+
+              - Effect: Allow
+                Action:
+                  - bedrock:InvokeAgent
+                Resource: "*"
+
+  CodeBuddyFunction:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: !Sub "${ProjectName}-orchestrator"
+      Runtime: python3.12
+      Handler: orchestrator.handler
+      Role: !GetAtt CodeBuddyLambdaRole.Arn
+      Timeout: 300
+      MemorySize: 512
+
+      Environment:
+        Variables:
+          AGENT_ID: !Ref AgentId
+          AGENT_ALIAS_ID: !Ref AgentAliasId
+          GITHUB_TOKEN: !Ref GitHubToken
+          SLACK_WEBHOOK_URL: !Ref SlackWebhookUrl
+          AWS_REGION_NAME: !Ref AWS::Region
+
+      Code:
+        S3Bucket: !Ref LambdaCodeBucket
+        S3Key: !Ref LambdaCodeKey
+
+  CodeBuddyHttpApi:
+    Type: AWS::ApiGatewayV2::Api
+    Properties:
+      Name: !Sub "${ProjectName}-api"
+      ProtocolType: HTTP
+
+  CodeBuddyIntegration:
+    Type: AWS::ApiGatewayV2::Integration
+    Properties:
+      ApiId: !Ref CodeBuddyHttpApi
+      IntegrationType: AWS_PROXY
+      IntegrationUri: !GetAtt CodeBuddyFunction.Arn
+      PayloadFormatVersion: "2.0"
+
+  CodeBuddyRoute:
+    Type: AWS::ApiGatewayV2::Route
+    Properties:
+      ApiId: !Ref CodeBuddyHttpApi
+      RouteKey: "POST /github/webhook"
+      Target: !Sub "integrations/${CodeBuddyIntegration}"
+
+  CodeBuddyStage:
+    Type: AWS::ApiGatewayV2::Stage
+    Properties:
+      ApiId: !Ref CodeBuddyHttpApi
+      StageName: "$default"
+      AutoDeploy: true
+
+  CodeBuddyLambdaPermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !Ref CodeBuddyFunction
+      Action: lambda:InvokeFunction
+      Principal: apigateway.amazonaws.com
+      SourceArn: !Sub "arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${CodeBuddyHttpApi}/*/*/github/webhook"
+
+Outputs:
+  WebhookUrl:
+    Description: GitHub Webhook Payload URL
+    Value: !Sub "https://${CodeBuddyHttpApi}.execute-api.${AWS::Region}.amazonaws.com/github/webhook"
+
+  LambdaFunctionName:
+    Description: Lambda function name
+    Value: !Ref CodeBuddyFunction
